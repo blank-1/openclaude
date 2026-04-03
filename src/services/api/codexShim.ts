@@ -85,7 +85,7 @@ function makeUsage(usage?: {
 }
 
 function makeMessageId(): string {
-  return `msg_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+  return `msg_${crypto.randomUUID().replace(/-/g, '')}`
 }
 
 function normalizeToolUseId(toolUseId: string | undefined): {
@@ -264,7 +264,8 @@ export function convertAnthropicMessagesToResponsesInput(
 
     if (role === 'assistant') {
       const textBlocks = Array.isArray(content)
-        ? content.filter((block: { type?: string }) => block.type !== 'tool_use')
+        ? content.filter((block: { type?: string }) =>
+            block.type !== 'tool_use' && block.type !== 'thinking')
         : content
       const parts = convertContentBlocksToResponsesParts(textBlocks, 'assistant')
       if (parts.length > 0) {
