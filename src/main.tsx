@@ -801,7 +801,30 @@ export async function main() {
   const hasPrintFlag = cliArgs.includes('-p') || cliArgs.includes('--print');
   const hasInitOnlyFlag = cliArgs.includes('--init-only');
   const hasSdkUrl = cliArgs.some(arg => arg.startsWith('--sdk-url'));
-  const isNonInteractive = hasPrintFlag || hasInitOnlyFlag || hasSdkUrl || !process.stdout.isTTY;
+
+  // Force interactive mode to ensure proper stdin setup
+  // This overrides isTTY checks which may be unreliable in some environments
+  const forceInteractive = process.env.FORCE_INTERACTIVE === '1' ||
+                           process.env.CI === 'false' ||
+                           process.env.DEBUG === '1'
+  const hasTty = process.stdout.isTTY === true
+
+  let isNonInteractive = hasPrintFlag || hasInitOnlyFlag || hasSdkUrl
+
+  if (forceInteractive && !hasPrintFlag && !hasInitOnlyFlag) {
+    isNonInteractive = false
+  } else if (!isNonInteractive) {
+    isNonInteractive = !hasTty
+  }
+
+  // Debug: log stdin state for troubleshooting
+  if (process.env.DEBUG_STDIN === '1') {
+    console.error('[DEBUG] stdin.isTTY:', process.stdin.isTTY)
+    console.error('[DEBUG] stdout.isTTY:', process.stdout.isTTY)
+    console.error('[DEBUG] hasTty:', hasTty)
+    console.error('[DEBUG] forceInteractive:', forceInteractive)
+    console.error('[DEBUG] isNonInteractive:', isNonInteractive)
+  }
 
   // Stop capturing early input for non-interactive modes
   if (isNonInteractive) {

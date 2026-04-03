@@ -46,7 +46,7 @@ export function startCapturingEarlyInput(): void {
   // This ensures compatibility with how the REPL will handle stdin later
   try {
     process.stdin.setEncoding('utf8')
-    process.stdin.setRawMode(true)
+    process.stdin.resume()
     process.stdin.ref()
 
     readableHandler = () => {
@@ -59,7 +59,16 @@ export function startCapturingEarlyInput(): void {
       }
     }
 
+    // Use both readable and data events for better cross-runtime compatibility
     process.stdin.on('readable', readableHandler)
+    // Add data listener as backup for Bun/other runtimes
+    process.stdin.on('data', (chunk: Buffer) => {
+      if (typeof chunk === 'string') {
+        processChunk(chunk)
+      } else {
+        processChunk(chunk.toString('utf8'))
+      }
+    })
   } catch {
     // If we can't set raw mode, just silently continue without early capture
     isCapturing = false

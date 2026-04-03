@@ -78,6 +78,13 @@ export const renderSync = (
   options?: NodeJS.WriteStream | RenderOptions,
 ): Instance => {
   const opts = getOptions(options)
+
+  // Ensure stdin is properly configured for input
+  // On some systems/terminals, stdin might need explicit resume
+  if (process.stdin.isTTY) {
+    process.stdin.resume()
+  }
+
   const inkOptions: InkOptions = {
     stdout: process.stdout,
     stdin: process.stdin,
