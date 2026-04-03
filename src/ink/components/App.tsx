@@ -183,6 +183,18 @@ export default class App extends PureComponent<Props, State> {
     if (this.props.stdout.isTTY && !isEnvTruthy(process.env.CLAUDE_CODE_ACCESSIBILITY)) {
       this.props.stdout.write(HIDE_CURSOR);
     }
+
+    // 强制添加 data 事件监听器，确保在任何情况下都能接收输入
+    // This is a fallback to ensure input works when raw mode isn't supported
+    const { stdin } = this.props;
+    stdin.setEncoding('utf8');
+    if (stdin.isPaused()) {
+      stdin.resume();
+    }
+    // 确保不重复添加监听器
+    if (stdin.listenerCount('data') === 0) {
+      stdin.addListener('data', this.handleDataChunk);
+    }
   }
   override componentWillUnmount() {
     if (this.props.stdout.isTTY) {
@@ -211,13 +223,25 @@ export default class App extends PureComponent<Props, State> {
     const {
       stdin
     } = this.props;
+
+    // 当 raw mode 不被支持时，仍然需要监听输入事件以便在 cooked 模式下工作
     if (!this.isRawModeSupported()) {
-      if (stdin === process.stdin) {
-        throw new Error('Raw mode is not supported on the current process.stdin, which Ink uses as input stream by default.\nRead about how to prevent this error on https://github.com/vadimdemedes/ink/#israwmodesupported');
-      } else {
-        throw new Error('Raw mode is not supported on the stdin provided to Ink.\nRead about how to prevent this error on https://github.com/vadimdemedes/ink/#israwmodesupported');
+      // 使用 data 事件来接收输入
+      if (isEnabled && this.rawModeEnabledCount === 0) {
+        stdin.setEncoding('utf8')
+        stdin.resume()
+        stdin.addListener('data', this.handleDataChunk)
+      } else if (!isEnabled && this.rawModeEnabledCount === 1) {
+        stdin.removeListener('data', this.handleDataChunk)
       }
+      if (isEnabled) {
+        this.rawModeEnabledCount++
+      } else {
+        this.rawModeEnabledCount = Math.max(0, this.rawModeEnabledCount - 1)
+      }
+      return
     }
+
     stdin.setEncoding('utf8');
     if (isEnabled) {
       // Ensure raw mode is enabled only once

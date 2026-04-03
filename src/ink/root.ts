@@ -81,7 +81,8 @@ export const renderSync = (
 
   // Ensure stdin is properly configured for input
   // On some systems/terminals, stdin might need explicit resume
-  if (process.stdin.isTTY) {
+  // Also resume when isTTY is undefined (e.g., IDE terminals or certain bun environments)
+  if (process.stdin.isTTY || process.stdin.isTTY === undefined) {
     process.stdin.resume()
   }
 
